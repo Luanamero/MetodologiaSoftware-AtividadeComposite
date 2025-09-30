@@ -1,5 +1,5 @@
 # composicao.py
-from typing import List
+from typing import List, Iterable
 from componente import ComponenteCadastro
 # Importa TODAS as folhas para uso nas restrições de tipo
 from folha import FolhaCadastro, ID, DataCadastro, Nome, Telefone, DataAdmissao, Salario, RG, CPF, CNH, CTPS
@@ -19,14 +19,30 @@ class ComposicaoCadastro(ComponenteCadastro):
         self.filhos: List[ComponenteCadastro] = [] 
 
     # Métodos obrigatórios para o Composite
-    def adicionar(self, componente: ComponenteCadastro):
+    def adicionar(self, componente: ComponenteCadastro) -> None:
+        """Adiciona um componente filho ao composite."""
         self.filhos.append(componente)
 
-    def remover(self, componente: ComponenteCadastro):
-        self.filhos.remove(componente)
+    def remover(self, componente: ComponenteCadastro) -> bool:
+        """Remove um filho se existir. Retorna True se removeu, False caso contrário."""
+        if componente in self.filhos:
+            self.filhos.remove(componente)
+            return True
+        return False
         
     def getFilho(self, indice: int) -> ComponenteCadastro:
-        return self.filhos[indice]
+        """Retorna o filho pelo índice com mensagem clara em caso de erro."""
+        try:
+            return self.filhos[indice]
+        except IndexError as e:
+            raise IndexError(f"Índice {indice} inválido para '{self.nome}', total de filhos: {len(self.filhos)}") from e
+
+    # Alias em estilo PEP8 sem quebrar código existente.
+    get_filho = getFilho
+
+    def iter_filhos(self) -> Iterable[ComponenteCadastro]:
+        """Iterador somente leitura dos filhos (não expõe a lista interna)."""
+        return iter(self.filhos)
 
     def exibir(self, profundidade=0) -> str:
         indent = '    ' * profundidade
@@ -49,10 +65,10 @@ class DadosPessoais(ComposicaoCadastro):
     def __init__(self):
         super().__init__("Dados Pessoais")
         
+    TIPOS_PERMITIDOS = (Nome, Telefone, 'Dependentes', 'Contatos')  
     def adicionar(self, componente: ComponenteCadastro):
-        # Tipos permitidos em Dados Pessoais (apenas o que está ligado a ela)
-        tipos_permitidos = (Nome, Telefone, Dependentes, Contatos)
-        if not isinstance(componente, tipos_permitidos):
+        tipos_permitidos_resolvidos = (Nome, Telefone, Dependentes, Contatos)
+        if not isinstance(componente, tipos_permitidos_resolvidos):
             raise TypeError(f"Erro: Componente de tipo {type(componente).__name__} não pode ser adicionado à seção Dados Pessoais.")
         super().adicionar(componente)
 
@@ -63,10 +79,11 @@ class DadosAdmissional(ComposicaoCadastro):
     def __init__(self):
         super().__init__("Dados Admissional")
         
+    TIPOS_PERMITIDOS = (DataAdmissao, Salario, 'InformacoesCargo')
+
     def adicionar(self, componente: ComponenteCadastro):
-        # Tipos permitidos em Dados Admissional
-        tipos_permitidos = (DataAdmissao, Salario, InformacoesCargo)
-        if not isinstance(componente, tipos_permitidos):
+        tipos_permitidos_resolvidos = (DataAdmissao, Salario, InformacoesCargo)
+        if not isinstance(componente, tipos_permitidos_resolvidos):
             raise TypeError(f"Erro: Componente de tipo {type(componente).__name__} não pode ser adicionado à seção Dados Admissional.")
         super().adicionar(componente)
 
@@ -77,11 +94,15 @@ class Endereco(ComposicaoCadastro):
     def __init__(self):
         super().__init__("Endereço")
         
+    TIPOS_PERMITIDOS_NOMES = {"Residencial", "Comercial"}
+
     def adicionar(self, componente: ComponenteCadastro):
-        if isinstance(componente, FolhaCadastro) and componente.nome in ["Residencial", "Comercial"]:
+        if isinstance(componente, FolhaCadastro) and componente.nome in self.TIPOS_PERMITIDOS_NOMES:
             super().adicionar(componente)
-        else:
-            raise TypeError(f"Erro: A seção Endereço só aceita 'Residencial' ou 'Comercial'. Recebido: {type(componente).__name__}")
+            return
+        raise TypeError(
+            f"Erro: A seção Endereço só aceita 'Residencial' ou 'Comercial'. Recebido: {getattr(componente, 'nome', type(componente).__name__)}"
+        )
 
 class Documentos(ComposicaoCadastro):
     """
@@ -90,10 +111,10 @@ class Documentos(ComposicaoCadastro):
     def __init__(self):
         super().__init__("Documentos")
         
+    TIPOS_PERMITIDOS = (RG, CPF, CNH, CTPS)
+
     def adicionar(self, componente: ComponenteCadastro):
-        tipos_permitidos = (RG, CPF, CNH, CTPS) 
-        
-        if not isinstance(componente, tipos_permitidos):
+        if not isinstance(componente, self.TIPOS_PERMITIDOS):
             raise TypeError(f"Erro: Componente de tipo {type(componente).__name__} não pode ser adicionado à seção Documentos.")
             
         super().adicionar(componente)

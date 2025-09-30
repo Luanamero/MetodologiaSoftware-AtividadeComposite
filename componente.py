@@ -8,4 +8,8 @@ class ComponenteCadastro(ABC):
     
     @abstractmethod
     def exibir(self, profundidade=0) -> str:
-        pass
+        """Retorna a representação textual hierárquica do componente.
+
+        profundidade: nível de indentação usado internamente pelo composite.
+        """
+        raise NotImplementedError("Subclasse deve implementar 'exibir'.")
